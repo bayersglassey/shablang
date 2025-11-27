@@ -45,7 +45,7 @@ def parse(code: str) -> List[Token]:
     return code.split()
 
 
-def eval(code: str):
+def eval(code: str, *, debug=False):
     """Evaluate some code in our language.
     Starts with a fresh, empty value stack, runs the given code (tokens),
     and returns the value stack.
@@ -98,11 +98,11 @@ def eval(code: str):
     global_frame['pi'] = pi
     call_stack.append(global_frame)
 
-    _eval_inner(tokens, value_stack, call_stack)
+    _eval_inner(tokens, value_stack, call_stack, debug)
     return value_stack
 
 
-def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[CallStackFrame]):
+def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[CallStackFrame], debug, calldepth=0):
     """The inner loop of our VM"""
 
     # If we got a string, assume it's code, and parse it
@@ -132,12 +132,16 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
 
         # Recursively call the VM's inner loop, with the given function
         # (i.e. the given list of tokens)
-        _eval_inner(func, value_stack, call_stack)
+        _eval_inner(func, value_stack, call_stack, debug, calldepth+1)
 
         if new_frame:
             call_stack.pop()
 
     for token in tokens:
+        if debug:
+            indent = '=== ' + '  ' * calldepth
+            print(indent + f"Stack: {' '.join(map(str, value_stack))}")
+            print(indent + f"Executing: {'[...]' if token == '[' else token}")
         if token.isdigit() or token[0] == '-' and token[1:].isdigit():
             # int literal
             value_stack.append(int(token))
@@ -213,5 +217,10 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
             varname = token
             value = getvar(varname)
             value_stack.append(value)
+
+    if debug:
+        indent = '=== ' + '  ' * calldepth
+        print(indent + f"Stack: {' '.join(map(str, value_stack))}")
+        print(indent + "Returning!..")
 
     return value_stack
