@@ -41,7 +41,13 @@ CallStackFrame = Dict[str, Value]
 def parse(code: str) -> List[Token]:
     """Parses some code, returning tokens.
     For our simple language, tokens are also like "byte codes"!"""
-    return code.split()
+    lines = code.splitlines()
+    tokens = []
+    for line in lines:
+        # Comments begin with '#' and go till the end of the line
+        line = line.split('#', 1)[0]
+        tokens.extend(line.split())
+    return tokens
 
 
 def eval(code: str, *, debug=False):

@@ -9,6 +9,8 @@ The syntax is very simple: the code is split on whitespace, and whatever is left
 The interpreter evaluates tokens one at a time, except for square brackets `[ ... ]`, which will
 be described below.
 
+Comments start with `#` and go until the end of the line.
+
 Here are the valid tokens and their effects:
 
 * Integer literals: `123`, `-26`, etc. These push the indicated value onto the stack.
@@ -29,6 +31,56 @@ Here are the valid tokens and their effects:
     * BOOL BODY1 BODY2 `ifelse`: if BOOL is truthy, executes BODY1, else executes BODY2.
     * COND BODY `while`: in a loop, execute COND, then pop a value from top of stack; if it's truthy,
       execute BODY and repeat; otherwise, exit the loop.
+
+## Examples
+
+### Math
+
+This example results in a 3 on the stack:
+```
+1 2 +
+```
+
+### Variables
+
+This example results in a 6 on the stack:
+```
+3 =x
+x x +
+```
+
+### Conditionals
+
+This example results in 200 being printed:
+```
+1 2 + 3 + =x
+x 5 == [ 100 print ] if
+x 6 == [ 200 print ] if
+```
+
+This example also results in 200 being printed:
+```
+1 2 + 3 + =x
+x 6 == [ 200 print ] [ 100 print ] ifelse
+```
+
+This example results in 3, then 2, then 1 being printed:
+```
+3 =x
+[ x 0 > ] [ x print  x 1 - =x ] while
+```
+
+### Functions
+
+This example results in a 12 and a 9 on the stack:
+```
+[ 2 * ] =double
+[ @double @double ] =quadruple
+[ =x x x * ] =square
+
+3 @quadruple
+3 @square
+```
 
 Here's a classic recursive fibonacci implementation:
 ```
