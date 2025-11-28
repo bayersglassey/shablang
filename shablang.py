@@ -1,5 +1,5 @@
-import re
-from typing import List, Dict, Any
+import sys
+from typing import List, Dict, Union, Iterable
 
 
 UNARY_OPERATORS = {
@@ -31,8 +31,11 @@ BINARY_OPERATORS = {
 # A token of our language, also used directly as its "bytecodes"
 Token = str
 
-# A value in our language is just any Python value
-Value = Any
+# Code we can evaluate
+Code = Union[str, Iterable[Token]]
+
+# A value in our language
+Value = Union[int, bool, List[Token]]
 
 # A call stack is just a mapping from variable names to values
 CallStackFrame = Dict[str, Value]
@@ -50,7 +53,7 @@ def parse(code: str) -> List[Token]:
     return tokens
 
 
-def eval(code: str, *, debug=False):
+def eval(code: Code, *, debug=False):
     """Evaluate some code in our language.
     Starts with a fresh, empty value stack, runs the given code (tokens),
     and returns the value stack.
@@ -86,7 +89,6 @@ def eval(code: str, *, debug=False):
         []
 
     """
-    tokens = parse(code)
 
     # These are the state of our VM.
     # Values can be pushed onto / popped from a "value stack", and there is
@@ -103,18 +105,20 @@ def eval(code: str, *, debug=False):
     global_frame = {}
     call_stack.append(global_frame)
 
-    _eval_inner(tokens, value_stack, call_stack, debug)
+    _eval_inner(code, value_stack, call_stack, debug)
     return value_stack
 
 
-def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[CallStackFrame], debug, calldepth=0):
+def _eval_inner(code: Code, value_stack: List[Value], call_stack: List[CallStackFrame], debug, calldepth=0):
     """The inner loop of our VM"""
 
-    # If we got a string, assume it's code, and parse it
-    if isinstance(tokens, str):
-        tokens = parse(tokens)
+    # Get tokens from code
+    if isinstance(code, str):
+        tokens = parse(code)
+    else:
+        tokens = code
 
-    # Convert list to iterator, so we can grab the next token using `next(tokens)`
+    # Convert e.g. list to iterator, so we can grab the next token using `next(tokens)`
     tokens = iter(tokens)
 
     # When we're called recursively, these are passed in
@@ -142,11 +146,21 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
         if new_frame:
             call_stack.pop()
 
+    def debug_print(msg, force=False):
+        if debug or force:
+            print('=== ' + '  ' * calldepth + msg)
+    def debug_print_stack(force=False):
+        debug_print(f"Stack: {' '.join(map(str, value_stack))}", force=force)
+
     for token in tokens:
-        if debug:
-            indent = '=== ' + '  ' * calldepth
-            print(indent + f"Stack: {' '.join(map(str, value_stack))}")
-            print(indent + f"Executing: {'[...]' if token == '[' else token}")
+        if token == '_end_of_line':
+            # Included by the REPL at the end of each line of user input.
+            # Just gives us a way to print the stack so user can see that
+            # before typing more input.
+            debug_print_stack(force=True)
+            continue
+        debug_print_stack()
+        debug_print(f"Executing: {'[...]' if token == '[' else token}")
         if token.isdigit() or token[0] == '-' and token[1:].isdigit():
             # int literal
             value_stack.append(int(token))
@@ -159,16 +173,20 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
             y = value_stack.pop()
             x = value_stack.pop()
             value_stack.append(operator(x, y))
-        elif token == 'debug_print':
+        elif token == '_debug_print':
             print(f"Call stack: {call_stack}")
             print(f"Value stack: {value_stack}")
         elif token == 'print':
             value = value_stack.pop()
             print(value)
         elif token == 'true':
-            value_stack.push(True)
+            value_stack.append(True)
         elif token == 'false':
-            value_stack.push(False)
+            value_stack.append(False)
+        elif token == 'dup':
+            value_stack.append(value_stack[-1])
+        elif token == 'drop':
+            value_stack.pop()
         elif token == 'if':
             if_branch = value_stack.pop()
             value = value_stack.pop()
@@ -207,7 +225,9 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
             depth = 1
             while True:
                 token = next(tokens)
-                if token == '[':
+                if token == '_end_of_line':
+                    continue
+                elif token == '[':
                     depth += 1
                 elif token == ']':
                     depth -= 1
@@ -227,9 +247,30 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
             value = getvar(varname)
             value_stack.append(value)
 
-    if debug:
-        indent = '=== ' + '  ' * calldepth
-        print(indent + f"Stack: {' '.join(map(str, value_stack))}")
-        print(indent + "Returning!..")
+    debug_print_stack()
+    debug_print("Returning!..")
 
     return value_stack
+
+
+def repl(debug=False):
+    def iter_tokens():
+        while True:
+            line = input(': ')
+            tokens = parse(line)
+            if tokens:
+                for token in tokens:
+                    yield token
+                yield '_end_of_line'
+    try:
+        eval(iter_tokens(), debug=debug)
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == '__main__':
+    debug = False
+    for arg in sys.argv[1:]:
+        if arg == '--debug':
+            debug = True
+    repl(debug=debug)

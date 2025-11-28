@@ -27,6 +27,8 @@ Here are the valid tokens and their effects:
 * Named function call: `@f`, `@my_function`, etc. Syntactic sugar for `f @`, `my_function @`, etc.
 * Special commands:
     * `print`: pops a value & outputs it.
+    * `dup`: duplicates whatever is on top of the stack, i.e. `x dup` is equivalent to `x x`.
+    * `drop`: pops whatever is on top of the stack, and discards it.
     * BOOL BODY `if`: if BOOL is truthy, executes BODY.
     * BOOL BODY1 BODY2 `ifelse`: if BOOL is truthy, executes BODY1, else executes BODY2.
     * COND BODY `while`: in a loop, execute COND, then pop a value from top of stack; if it's truthy,
@@ -158,4 +160,31 @@ In [3]: eval('[ 2 * ] =double    3 @double 4 @double +', debug=True)
 === Stack: 14
 === Returning!..
 Out[3]: [14]
+```
+
+You can also run shablang.py directly to get a REPL. Pass it `--debug` to enable debug tracing:
+```
+$ python shablang.py
+: 1 2 +
+=== Stack: 3
+: dup *
+=== Stack: 9
+: ^C
+
+$ python shablang.py --debug
+: 1 2 +
+=== Stack:
+=== Executing: 1
+=== Stack: 1
+=== Executing: 2
+=== Stack: 1 2
+=== Executing: +
+=== Stack: 3
+: dup *
+=== Stack: 3
+=== Executing: dup
+=== Stack: 3 3
+=== Executing: *
+=== Stack: 9
+: ^C
 ```
