@@ -1,6 +1,5 @@
 import re
 from typing import List, Dict, Any
-from math import pi
 
 
 UNARY_OPERATORS = {
@@ -93,9 +92,9 @@ def eval(code: str, *, debug=False):
     value_stack = []
     call_stack = []
 
-    # Add the first stack frame, and add some default "global" values to it.
+    # Add the first stack frame.
+    # If we wanted some default global values, we could add them here.
     global_frame = {}
-    global_frame['pi'] = pi
     call_stack.append(global_frame)
 
     _eval_inner(tokens, value_stack, call_stack, debug)
@@ -160,6 +159,10 @@ def _eval_inner(tokens: List[Token], value_stack: List[Value], call_stack: List[
         elif token == 'print':
             value = value_stack.pop()
             print(value)
+        elif token == 'true':
+            value_stack.push(True)
+        elif token == 'false':
+            value_stack.push(False)
         elif token == 'if':
             if_branch = value_stack.pop()
             value = value_stack.pop()
