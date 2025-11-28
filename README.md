@@ -188,3 +188,10 @@ $ python shablang.py --debug
 === Stack: 9
 : ^C
 ```
+
+## Running unit tests
+
+```shell
+pip install pytest
+pytest
+```

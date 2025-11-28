@@ -41,9 +41,28 @@ Value = Union[int, bool, List[Token]]
 CallStackFrame = Dict[str, Value]
 
 
+class Function:
+
+    def __init__(self, tokens: List[Token]):
+        self.tokens = tokens
+
+    def __repr__(self):
+        tokens = ['['] + self.tokens + [']']
+        return ' '.join(tokens)
+
+
 def parse(code: str) -> List[Token]:
     """Parses some code, returning tokens.
-    For our simple language, tokens are also like "byte codes"!"""
+    For our simple language, tokens are also like "byte codes"!
+
+        >>> parse('''
+        ...     # A comment!
+        ...     1 2 + # Another comment!
+        ...     dup *
+        ... ''')
+        ['1', '2', '+', 'dup', '*']
+
+    """
     lines = code.splitlines()
     tokens = []
     for line in lines:
@@ -134,14 +153,17 @@ def _eval_inner(code: Code, value_stack: List[Value], call_stack: List[CallStack
                 return frame[varname]
         raise NameError(varname)
 
-    def call_func(func: List[Token], new_frame: bool = True):
+    def call_func(func: Function, new_frame: bool = True):
+        if not isinstance(func, Function):
+            raise Exception(f"Tried to call a non-function value: {func!r}")
+
         if new_frame:
             # Push a fresh stack frame
             call_stack.append({})
 
         # Recursively call the VM's inner loop, with the given function
         # (i.e. the given list of tokens)
-        _eval_inner(func, value_stack, call_stack, debug, calldepth+1)
+        _eval_inner(func.tokens, value_stack, call_stack, debug, calldepth+1)
 
         if new_frame:
             call_stack.pop()
@@ -234,7 +256,7 @@ def _eval_inner(code: Code, value_stack: List[Value], call_stack: List[CallStack
                     if depth <= 0:
                         break
                 token_list.append(token)
-            value_stack.append(token_list)
+            value_stack.append(Function(token_list))
         elif token[0] == '=':
             # set variable value
             # e.g. "3 =x" sets the value of the variable "x" to 3
